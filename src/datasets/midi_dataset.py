@@ -1,14 +1,8 @@
-# Source : https://github.com/eyalmazuz/MolGen/blob/master/MolGen/src/datasets/smiles_dataset.py
-
-from random import sample
-import pandas as pd
-
-from rdkit import Chem
-import torch
-from torch.utils.data import Dataset
-from tqdm import tqdm
-
-from  src.tokenizers import CharTokenizer
+from miditok import REMI, TokenizerConfig
+from miditok.pytorch_data import DatasetMIDI, DataCollator
+from miditok.utils import split_files_for_training
+from torch.utils.data import DataLoader
+from pathlib import Path
 
 
 class MidiDataset(Dataset):
