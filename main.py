@@ -13,9 +13,8 @@ from miditok.utils import split_files_for_training
 
 from src.models.gpt import GPT
 from src.train.train import Trainer
+from src.utils.general_utils import set_seed, setup_logging, CfgNode as CN
 
-
-import pickle
 
 wandb.login()
 
@@ -36,6 +35,9 @@ def get_config():
     C.pipeline.evaluate = True
     C.pipeline.sample = True
 
+    # data
+    C.data = None
+
     # model
     C.model = GPT.get_default_config()
 
@@ -52,6 +54,10 @@ if __name__ == '__main__':
     # get default config and overrides from the command line, if any
     config = get_config()
     config.merge_from_args(sys.argv[1:])
+
+    if config.data is None:
+        print("no data path provided")
+
     set_seed(config.system.seed)
 
     config.model.name = f'{config.model.model_type}_{config.model.n_layer}_{config.model.n_query_head}_{config.model.n_kv_head}'
@@ -80,23 +86,15 @@ if __name__ == '__main__':
 
     if config.pipeline.train_gpt:
 
-        # Split MIDIs into smaller chunks for training
-        dataset_chunks_dir = Path("path", "to", "midi_chunks")
-        split_files_for_training(
-        files_paths=files_paths,
-        tokenizer=tokenizer,
-        save_dir=dataset_chunks_dir,
-        max_seq_len=1024,
-        )
+        midis = list(Path(config.data).resolve().glob("**/*.mid"))
 
         # Create a Dataset, a DataLoader and a collator to train a model
         dataset = DatasetMIDI(
-        files_paths=list(dataset_chunks_dir.glob("**/*.mid")),
+        files_paths=midis,
         tokenizer=tokenizer,
         max_seq_len=1024,
         bos_token_id=tokenizer["BOS_None"],
-        eos_token_id=tokenizer["EOS_None"],
-        )
+        eos_token_id=tokenizer["EOS_None"])
         
         collator = DataCollator(tokenizer.pad_token_id, copy_inputs_as_labels=True)
         dataloader = DataLoader(dataset, batch_size=64, collate_fn=collator)
@@ -115,17 +113,7 @@ if __name__ == '__main__':
                 model.eval()
                 with torch.no_grad():
                     if config.gpt_trainer.sample: 
-                        # sample from the model...
-                        tokens = model.sample([tokenizer.bos_token_id], 1, device=trainer.device)
-                        tokens = tokens.tolist()
-                        mol = tokens[0]
-                        try:   
-                            end_idx = mol.index(tokenizer.eos_token_id)
-                        except ValueError:
-                            end_idx = len(mol)
-                        mol = mol[:end_idx+1]
-                        smiles = tokenizer.decode(mol[1:-1])
-                        print(f'\tSampled SMILES:  {smiles}')
+                       pass
 
                 torch.save(model.state_dict(), ckpt_path)
             
@@ -139,10 +127,7 @@ if __name__ == '__main__':
 
     # evaluate
     if config.pipeline.evaluate:
-        generated_smiles, _ = generate_smiles(model, tokenizer)
-        stats_filename = config.model.name + '_stats_preRL.json'
-        stats = get_statistics(generated_smiles, train_dataset._molecules, save_path=os.path.join(out_dir, stats_filename))
-
+        pass
     
 
     
