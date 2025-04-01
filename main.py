@@ -65,8 +65,8 @@ if __name__ == '__main__':
     if config.model.rope : config.model.name += '_rope'
 
     #tokenizer = MidiTokenizer(config.data_path, config.tokenizer_path, train=True)
-    config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
-    tokenizer = REMI(config)
+    tokenizer_config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
+    tokenizer = REMI(tokenizer_config)
 
     # construct the model
     config.model.vocab_size = len(tokenizer)
