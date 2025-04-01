@@ -23,18 +23,12 @@ class Trainer():
         C.betas = (0.9, 0.95)
         C.weight_decay = 0.1 # only applied on matmul weights
         C.grad_norm_clip = 1.0
-        # data for training
-        C.tokenizer_path = 'data/tokenizers/gdb13CharTokenizer.json'
-        C.dataset_path = 'data/gdb13/gdb13_rand1m.smi'
-        C.dataname = 'gdb13'
-        C.sample = False
 
         return C
     
-    def __init__(self, config, model, dataset):
+    def __init__(self, config, model, dataloader):
         self.config = config
-        self.dataset = dataset
-        self.dataset_size = len(dataset)
+        self.dataloader = dataloader
         self.model = model
         self.optimizer = model.configure_optimizers(config)
         self.callbacks = defaultdict(list)
@@ -69,32 +63,15 @@ class Trainer():
         model = self.model
         config = self.config
 
-        """dataloader = DataLoader(self.dataset,
-                                sampler=torch.utils.data.RandomSampler(self.dataset, replacement=True, num_samples=int(1e10)), 
-                                        # TODO : is this sampling strategy appropriate?
-                                shuffle=False,
-                                pin_memory=True,
-                                num_workers=config.num_workers,
-                                batch_size=config.batch_size)"""
-        
-        dataloader = torch.utils.data.DataLoader(self.dataset,
-                                                 shuffle=True,
-                                                 batch_size=config.batch_size,
-                                                 num_workers=config.num_workers,
-                                                 pin_memory=True)
-        
-        
         model.train()
 
         for epoch in range(config.epochs):
 
-            for batch, encodings in enumerate(dataloader):
+            for batch, encodings in enumerate(self.dataloader):
                 self.optimizer.zero_grad()
 
                 for k, v in encodings.items():
                     encodings[k] = v.to(self.device)
-                
-                assert "labels" in encodings.keys()
                 
                 self.loss, logits, *_ = self.model(**encodings) 
                 model.zero_grad(set_to_none=True)
@@ -102,7 +79,7 @@ class Trainer():
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 self.optimizer.step()
                 
-                self.n_examples += dataloader.batch_size
+                self.n_examples += self.dataloader.batch_size
 
                 """if self.loss.item() < self.best_loss:
                     self.loss_improved = True
