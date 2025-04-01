@@ -79,7 +79,7 @@ if __name__ == '__main__':
         model.load_state_dict(pretrained_state_dict, strict=False) 
     
     #setup_logging(config)
-    out_dir = os.path.join(config.system.work_dir, config.gpt_trainer.dataname)
+    out_dir = os.path.join(config.system.work_dir, "out")
     os.makedirs(out_dir, exist_ok=True)
 
     wandb.init(project="MusicGen", config=config)
@@ -87,6 +87,7 @@ if __name__ == '__main__':
     if config.pipeline.train_gpt:
 
         midis = list(Path(config.data).resolve().glob("**/*.mid"))
+        print(midis)
 
         # Create a Dataset, a DataLoader and a collator to train a model
         dataset = DatasetMIDI(
