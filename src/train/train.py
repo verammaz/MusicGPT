@@ -81,15 +81,7 @@ class Trainer():
                 
                 self.n_examples += self.dataloader.batch_size
 
-                """if self.loss.item() < self.best_loss:
-                    self.loss_improved = True
-                    self.best_loss = self.loss.item()
-                
-                else: 
-                    self.loss_improved = False"""
-
                 self.trigger_callbacks('on_batch_end')
-                
                 
                 if batch % 200 == 0:
                     print(f'epoch: {epoch + 1}, batch: {batch + 1}, loss: {self.loss.item()}')

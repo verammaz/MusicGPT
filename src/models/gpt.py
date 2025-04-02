@@ -181,16 +181,19 @@ class GPT(nn.Module):
         else:
             x = self.transformer.drop(tok_emb)
 
-        look_ahead_mask = self.mask[:,:,:t, :t]
+        causal_mask = self.mask[..., :t, :t]
 
         if attention_mask is not None:
-            attn_mask = attention_mask.view(b, 1, 1, t).to(device)
-            mask = torch.maximum(look_ahead_mask, attn_mask)
+            # expand attention_mask from (B, T) to (B, 1, T) or (B, 1, 1, T) as needed
+            expanded_mask = attention_mask[:, None, None, :]  # shape (B, 1, 1, T)
+            # broadcast expanded_mask against (B, heads, T, T), e.g. do an AND or masked_fill
+            combined_mask = causal_mask.masked_fill(expanded_mask == 0, float('-inf'))
         else:
-            mask = look_ahead_mask
+            combined_mask = causal_mask
+
 
         for block in self.transformer.h:
-            x = block(x, mask=mask)
+            x = block(x, mask=combined_mask)
 
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)

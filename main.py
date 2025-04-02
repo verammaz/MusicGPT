@@ -88,7 +88,6 @@ if __name__ == '__main__':
     if config.pipeline.train_gpt:
 
         midis = list(Path(config.data).resolve().glob("**/*.mid"))
-        print(midis)
 
         # Create a Dataset, a DataLoader and a collator to train a model
         dataset = DatasetMIDI(
