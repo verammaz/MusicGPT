@@ -106,10 +106,6 @@ if __name__ == '__main__':
 
             if (trainer.n_iter + 1) % 200 == 0:
                 model.eval()
-                with torch.no_grad():
-                    if config.gpt_trainer.sample: 
-                       pass
-
                 torch.save(model.state_dict(), ckpt_path)
             
                 # revert model to training mode
