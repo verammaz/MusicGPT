@@ -95,10 +95,10 @@ if __name__ == '__main__':
 
     wandb.init(project="MusicGen", config=config)
 
-    if config.pipeline.train_gpt:
-
-        dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
+    dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
                               subsets=False, return_datasets=False, split=True, augment=True)
+    
+    if config.pipeline.train_gpt:
 
         # construct trainer object
         trainer = Trainer(config.gpt_trainer, model, dataloader)
@@ -124,12 +124,11 @@ if __name__ == '__main__':
 
     # sample
     if config.pipeline.sample:
+        
         sampled_tokens = model.sample(max_new_tokens=1024, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
         outmidi = os.path.join(out_dir, "scratch_sample.mid")
         tokenizer(sampled_tokens[0]).dump_midi(outmidi)
 
-        dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
-                              subsets=False, return_datasets=False, split=True, augment=True)
 
         for batch_idx, encodings in enumerate(dataloader):
 
@@ -155,7 +154,7 @@ if __name__ == '__main__':
                 start_tokens=seed_sequence,
                 size=1,            # we want 1 sequence
                 temperature=1.0,
-                max_len=128,       # or max_new_tokens, depending on your function
+                max_len=512,       # or max_new_tokens, depending on your function
                 device=None
             )
 
