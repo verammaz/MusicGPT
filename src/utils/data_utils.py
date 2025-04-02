@@ -13,8 +13,8 @@ from miditok.data_augmentation import augment_dataset
 from miditok.pytorch_data import DatasetMIDI, DataCollator
 
 
-def split_data(tokenizer, datapath, files_paths, subset_name, max_seq_len, split, augment):
-    subset_chunks_dir = Path(datapath, "..", f"Midi_{subset_name}")
+def split_data(tokenizer, files_paths, subset_name, max_seq_len, split, augment):
+    subset_chunks_dir = Path("..", f"Midi_{subset_name}")
 
     if split:
         # Split the MIDIs into chunks of sizes approximately about 1024 tokens
@@ -37,7 +37,7 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
     midipaths = list(Path(datapath).glob("**/*.mid"))
 
     if not subsets:
-        split_data(tokenizer, datapath, midipaths, "all", max_seq_len, split, augment)
+        split_data(tokenizer, midipaths, "all", max_seq_len, split, augment)
         midis = list(Path("Midi_all").glob("**/*.mid"))
         kwargs_dataset = {"max_seq_len": max_seq_len, "tokenizer": tokenizer, "bos_token_id": tokenizer["BOS_None"], "eos_token_id": tokenizer["EOS_None"]}
         dataset= DatasetMIDI(midis, **kwargs_dataset)
@@ -64,7 +64,7 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
     
         # Chunk MIDIs and perform data augmentation on each subset independently
         for files_paths, subset_name in ((midi_paths_train, "train"), (midi_paths_valid, "valid"), (midi_paths_test, "test")):
-            split_data(tokenizer, datapath, files_paths, subset_name, max_seq_len, split, augment)
+            split_data(tokenizer, files_paths, subset_name, max_seq_len, split, augment)
 
         # Create Dataset and Collator for training
         midi_paths_train = list(Path("Midi_train").glob("**/*.mid")) 
