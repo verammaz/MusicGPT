@@ -166,7 +166,7 @@ class GPT(nn.Module):
         optimizer = torch.optim.AdamW(optim_groups, lr=train_config.learning_rate, betas=train_config.betas)
         return optimizer
 
-    def forward(self, input_ids, padding_mask=None, labels=None):
+    def forward(self, input_ids, attention_mask=None, labels=None):
         device = input_ids.device
         b, t = input_ids.size()
         #print(t, b, self.block_size)
@@ -183,8 +183,8 @@ class GPT(nn.Module):
 
         look_ahead_mask = self.mask[:,:,:t, :t]
 
-        if padding_mask is not None:
-            attn_mask = padding_mask.view(b, 1, 1, t).to(device)
+        if attention_mask is not None:
+            attn_mask = attention_mask.view(b, 1, 1, t).to(device)
             mask = torch.maximum(look_ahead_mask, attn_mask)
         else:
             mask = look_ahead_mask
