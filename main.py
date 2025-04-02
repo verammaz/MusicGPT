@@ -2,6 +2,7 @@ import wandb
 import os
 import sys
 import json
+import numpy as np
 from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
@@ -120,13 +121,48 @@ if __name__ == '__main__':
 
         # run the optimization
         trainer.run()
-        
+
     # sample
     if config.pipeline.sample:
         sampled_tokens = model.sample(max_new_tokens=1024, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
-        outmidi = os.path.join(out_dir, "sample.mid")
+        outmidi = os.path.join(out_dir, "scratch_sample.mid")
         tokenizer(sampled_tokens[0]).dump_midi(outmidi)
 
+        for batch_idx, encodings in enumerate(dataloader):
+
+            if batch_idx > 1:
+                break
+
+            input_ids = encodings["input_ids"]  # shape (B, T)
+            
+            # Pick a random sequence from the batch
+            random_idx = np.random.randint(0, input_ids.size(0))
+            
+            # Get the tokens for that sequence as a list
+            seed_sequence = input_ids[random_idx].tolist()
+            
+            # Optionally, pick a random chunk of it if you want partial context
+            # e.g., random chunk of length <= T
+            #random_length = np.random.randint(1, len(seed_sequence) + 1)
+            #seed_sequence = seed_sequence[:random_length]
+            
+            # Now feed this partial sequence as a prompt to the model
+            # We'll generate, say, 128 more tokens
+            generated = model.sample(
+                start_tokens=seed_sequence,
+                size=1,            # we want 1 sequence
+                temperature=1.0,
+                max_len=128,       # or max_new_tokens, depending on your function
+                device=None
+            )
+            
+            outmidi = os.path.join(out_dir, "train_sample.mid")
+            tokenizer(seed_sequence[0]).dump_midi(outmidi)
+
+            outmidi = os.path.join(out_dir, "continued_sample.mid")
+            tokenizer(generated[0]).dump_midi(outmidi)
+            
+            
     # evaluate
     if config.pipeline.evaluate:
         pass
