@@ -120,9 +120,12 @@ if __name__ == '__main__':
 
         # run the optimization
         trainer.run()
+        
     # sample
     if config.pipeline.sample:
-        s = model.sample(max_new_tokens=512, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
+        sampled_tokens = model.sample(max_new_tokens=1024, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
+        outmidi = os.path.join(out_dir, "sample.mid")
+        tokenizer(sampled_tokens[0]).dump_midi(outmidi)
 
     # evaluate
     if config.pipeline.evaluate:
