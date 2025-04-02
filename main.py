@@ -84,6 +84,7 @@ if __name__ == '__main__':
     model = GPT(config.model)
     
     if config.model.pretrained != None:
+        print("Loading pretrained model...")
         pretrained_state_dict = torch.load(config.model.pretrained, weights_only=True)
         model.load_state_dict(pretrained_state_dict, strict=False) 
     

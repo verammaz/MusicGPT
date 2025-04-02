@@ -38,7 +38,7 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
 
     if not subsets:
         split_data(tokenizer, midipaths, "all", max_seq_len, split, augment)
-        midis = list(Path("Midi_all").glob("**/*.mid"))
+        midis = list(Path("..", "Midi_all").glob("**/*.mid"))
         kwargs_dataset = {"max_seq_len": max_seq_len, "tokenizer": tokenizer, "bos_token_id": tokenizer["BOS_None"], "eos_token_id": tokenizer["EOS_None"]}
         dataset= DatasetMIDI(midis, **kwargs_dataset)
         print(f"Dataset size: {len(dataset)} files")
@@ -67,9 +67,9 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
             split_data(tokenizer, files_paths, subset_name, max_seq_len, split, augment)
 
         # Create Dataset and Collator for training
-        midi_paths_train = list(Path("Midi_train").glob("**/*.mid")) 
-        midi_paths_valid = list(Path("Midi_valid").glob("**/*.mid"))
-        midi_paths_test = list(Path("Midi_test").glob("**/*.mid"))
+        midi_paths_train = list(Path("..", "Midi_train").glob("**/*.mid")) 
+        midi_paths_valid = list(Path("..", "Midi_valid").glob("**/*.mid"))
+        midi_paths_test = list(Path("..", "Midi_test").glob("**/*.mid"))
         kwargs_dataset = {"max_seq_len": max_seq_len, "tokenizer": tokenizer, "bos_token_id": tokenizer["BOS_None"], "eos_token_id": tokenizer["EOS_None"]}
         dataset_train = DatasetMIDI(midi_paths_train, **kwargs_dataset)
         print(f"Train Dataset size: {len(dataset)} files")
