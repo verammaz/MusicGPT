@@ -62,7 +62,11 @@ if __name__ == '__main__':
 
     set_seed(config.system.seed)
 
-    config.model.name = f'{config.model.model_type}_{config.model.n_layer}_{config.model.n_query_head}_{config.model.n_kv_head}'
+    if config.model.model_name is None:
+        config.model.name = f'{config.model.model_type}_l{config.model.n_layer}_q{config.model.n_query_head}_kv{config.model.n_kv_head}'
+
+    else:
+        config.model.name = f'{config.model.model_type}_{config.model.model_name}_l{config.model.n_layer}_q{config.model.n_query_head}_kv{config.model.n_kv_head}'
 
     if config.model.rope : config.model.name += '_rope'
 
@@ -115,6 +119,9 @@ if __name__ == '__main__':
 
         # run the optimization
         trainer.run()
+    # sample
+    if config.pipeline.sample:
+        s = model.sample(max_new_tokens=512, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
 
     # evaluate
     if config.pipeline.evaluate:

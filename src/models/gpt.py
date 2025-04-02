@@ -31,6 +31,8 @@ class GPT(nn.Module):
     def get_default_config():
         C = CN()
         C.model_type = 'gpt'
+        C.model_name = None
+        # architecture parameters
         C.n_layer=4
         C.n_query_head=4
         C.n_kv_head=4
@@ -211,23 +213,70 @@ class GPT(nn.Module):
 
 
     @torch.no_grad()
-    def sample(self, start_token, size, temperature=1, max_len=100, device=torch.device('cuda'), verb=True):
-        x = torch.tensor([start_token] * size, dtype=torch.long).to(device) 
-        
-        for k in trange(max_len, leave=True, desc="Sampling SMILES", disable=not verb):
-            with torch.no_grad():
-                logits = self.forward(x)
+    
 
+    def sample(self, start_tokens=None, size=1, temperature=1.0, max_new_tokens=1024,
+        device=None,
+        verbose=True,
+        bos_token_id=1,
+        pad_token_id=0): 
+
+        if device is None:
+            device = next(self.parameters()).device
+
+        if start_tokens is None:
+            # --- FROM SCRATCH ---
+            start_tokens = [[bos_token_id]]
+            replicate_start = True
+
+        elif isinstance(start_tokens[0], int):
+            # single partial sequence, replicate for `size` parallel samples
+            start_tokens = [start_tokens]  # make it a list of lists
+            replicate_start = True
+        else:
+            # already a list of lists
+            # assume each sub-list is one prompt
+            replicate_start = False
+            if len(start_tokens) != size:
+                size = len(start_tokens)
+                print(f"Overriding `size` to match len(start_tokens) = {size}")
+
+        # convert to a single 2D tensor: [size, seq_len_of_prompt]
+        # if replicate_start, repeat same sequence for each item in the batch.
+        if replicate_start:
+            prompt_ids = torch.tensor(start_tokens[0], dtype=torch.long).unsqueeze(0)  # [1, prompt_len]
+            prompt_ids = prompt_ids.expand(size, -1)  # [size, prompt_len]
+        else:
+            # have multiple distinct partial sequences
+            # pad them to the same length if needed
+            max_len_prompt = max(len(seq) for seq in start_tokens)
+            padded_seqs = []
+            for seq in start_tokens:
+                # pad on the right with (for example) bos_token_id or a real PAD if you have one
+                seq = seq + [bos_token_id]*(max_len_prompt - len(seq))
+                padded_seqs.append(seq)
+            prompt_ids = torch.tensor(padded_seqs, dtype=torch.long)  # [size, max_len_prompt]
+
+        prompt_ids = prompt_ids.to(device)
+
+        # start sampling
+        for _ in trange(max_new_tokens, disable=not verbose, desc="Sampling"):
+            # forward pass: shape => [size, current_seq_len, vocab_size]
+            logits = self.forward(prompt_ids)
             if isinstance(logits, tuple):
-                logits = logits[0]
+                logits = logits[0]  # handle the (loss, logits) or other returns
 
-            logits = logits[:, -1, :] / temperature
-            probs = F.softmax(logits, dim=-1)
-            idxs = torch.multinomial(probs, num_samples=1)
+            # take only the last time step's logits: shape [size, vocab_size]
+            next_logits = logits[:, -1, :] / temperature
+            next_probs = F.softmax(next_logits, dim=-1)
 
-            x = torch.cat((x, idxs), dim=1)
-        #print(x)
+            # sample from the probability distribution
+            next_token_ids = torch.multinomial(next_probs, num_samples=1)  # [size, 1]
 
-        return x
+            # append next_token_ids to the prompt
+            prompt_ids = torch.cat([prompt_ids, next_token_ids], dim=1)  # [size, old_len+1]
 
-   
+        return prompt_ids
+
+
+    
