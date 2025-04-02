@@ -128,6 +128,9 @@ if __name__ == '__main__':
         outmidi = os.path.join(out_dir, "scratch_sample.mid")
         tokenizer(sampled_tokens[0]).dump_midi(outmidi)
 
+        dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
+                              subsets=False, return_datasets=False, split=True, augment=True)
+
         for batch_idx, encodings in enumerate(dataloader):
 
             if batch_idx > 1:
@@ -155,7 +158,7 @@ if __name__ == '__main__':
                 max_len=128,       # or max_new_tokens, depending on your function
                 device=None
             )
-            
+
             outmidi = os.path.join(out_dir, "train_sample.mid")
             tokenizer(seed_sequence[0]).dump_midi(outmidi)
 

@@ -48,7 +48,7 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
         else:
             collator = DataCollator(tokenizer.pad_token_id, copy_inputs_as_labels=True)
             dataloader= DataLoader(dataset, batch_size=batch_size, collate_fn=collator)
-            print(f"Dataloader size: {len(dataloader)} sequences")
+            print(f"Dataloader size: {len(dataloader)} batches")
             return dataloader
     
 
