@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
     # construct the model
     config.model.vocab_size = len(tokenizer)
+    config.model.block_size = 1024
     
     print(config)
     model = GPT(config.model)
