@@ -30,19 +30,18 @@ class GPT(nn.Module):
     @staticmethod
     def get_default_config():
         C = CN()
-        # either model_type or (n_layer, n_head, n_embd) must be given in the config
         C.model_type = 'gpt'
-        C.n_layer=1
+        C.n_layer=4
         C.n_query_head=4
         C.n_kv_head=4
         C.n_embd=512
         C.proj_size=512
         C.d_model=512
-        C.block_size=512
+        C.block_size=1024
         C.vocab_size=512
         C.rope = False
         C.pretrained = None
-        # dropout hyperparameters
+        # dropout hyperparameters --> decrease for smaller dataset
         C.embd_pdrop = 0.1
         C.resid_pdrop = 0.1
         C.attn_pdrop = 0.1
@@ -184,9 +183,9 @@ class GPT(nn.Module):
         causal_mask = self.mask[..., :t, :t]
 
         if attention_mask is not None:
-            # expand attention_mask from (B, T) to (B, 1, T) or (B, 1, 1, T) as needed
-            expanded_mask = attention_mask[:, None, None, :]  # shape (B, 1, 1, T)
-            # broadcast expanded_mask against (B, heads, T, T), e.g. do an AND or masked_fill
+            # expand attention_mask from (b, t) to (b, 1, 1, t) 
+            expanded_mask = attention_mask[:, None, None, :]  # shape (b, 1, 1, t)
+            # broadcast expanded_mask against (b, heads, t, t)
             combined_mask = causal_mask.masked_fill(expanded_mask == 0, float('-inf'))
         else:
             combined_mask = causal_mask

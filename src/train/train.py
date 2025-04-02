@@ -14,7 +14,7 @@ class Trainer():
         # device to train on
         C.device = 'auto'
         # training parameters
-        C.epochs = 1
+        C.epochs = 10
         # dataloder parameters
         C.num_workers = 4
         # optimizer parameters
@@ -57,7 +57,6 @@ class Trainer():
         for callback in self.callbacks.get(onevent, []):
             callback(self)
             
-
 
     def run(self):
         model = self.model

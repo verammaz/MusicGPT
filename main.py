@@ -7,13 +7,12 @@ import torch
 from torch.utils.data import DataLoader
 
 from miditok import REMI, TokenizerConfig
-from symusic import Score
 from miditok.pytorch_data import DatasetMIDI, DataCollator
-from miditok.utils import split_files_for_training
 
 from src.models.gpt import GPT
 from src.train.train import Trainer
 from src.utils.general_utils import set_seed, setup_logging, CfgNode as CN
+from src.utils.data_utils import get_data, split_data
 
 
 wandb.login()
@@ -31,6 +30,7 @@ def get_config():
 
     # pipeline
     C.pipeline = CN()
+    C.pipeline.train_token = False
     C.pipeline.train_gpt = True
     C.pipeline.evaluate = True
     C.pipeline.sample = True
@@ -51,12 +51,14 @@ def get_config():
 
 if __name__ == '__main__':
 
-    # get default config and overrides from the command line, if any
+    # get default config and override from the command line
     config = get_config()
     config.merge_from_args(sys.argv[1:])
 
+    # check that train data is provided
     if config.data is None:
-        print("no data path provided")
+        print("No data path provided. Specify --data= argument.")
+        sys.exit(1)
 
     set_seed(config.system.seed)
 
@@ -64,13 +66,15 @@ if __name__ == '__main__':
 
     if config.model.rope : config.model.name += '_rope'
 
-    #tokenizer = MidiTokenizer(config.data_path, config.tokenizer_path, train=True)
-    tokenizer_config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
-    tokenizer = REMI(tokenizer_config)
+    # set up tokenizer 
+    if not config.pipeline.train_token:
+        tokenizer_config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
+        tokenizer = REMI(tokenizer_config)
+    else:
+        pass
 
     # construct the model
     config.model.vocab_size = len(tokenizer)
-    config.model.block_size = 1024
     
     print(config)
     model = GPT(config.model)
@@ -87,20 +91,10 @@ if __name__ == '__main__':
 
     if config.pipeline.train_gpt:
 
-        midis = list(Path(config.data).resolve().glob("**/*.mid"))
+        dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
+                              subsets=False, return_datasets=False, split=True, augment=True)
 
-        # Create a Dataset, a DataLoader and a collator to train a model
-        dataset = DatasetMIDI(
-        files_paths=midis,
-        tokenizer=tokenizer,
-        max_seq_len=1024,
-        bos_token_id=tokenizer["BOS_None"],
-        eos_token_id=tokenizer["EOS_None"])
-        
-        collator = DataCollator(tokenizer.pad_token_id, copy_inputs_as_labels=True)
-        dataloader = DataLoader(dataset, batch_size=64, collate_fn=collator)
-
-        # construct the trainer object
+        # construct trainer object
         trainer = Trainer(config.gpt_trainer, model, dataloader)
 
         # iteration callback
