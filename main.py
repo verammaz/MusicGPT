@@ -82,7 +82,7 @@ if __name__ == '__main__':
         print("Tokenizer training not implemented. Using default tokenizer.")
         config.pipeline.train_token = False
 
-    elif config.pipeline.train_tokenizer:
+    elif config.pipeline.train_token:
         tokenizer_config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
         tokenizer = REMI(tokenizer_config)
 
