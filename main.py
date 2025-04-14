@@ -46,6 +46,7 @@ def get_config():
     C.gpt_trainer = Trainer.get_default_config()
 
     # sampling
+    C.sample = CN()
     C.sample.n_scratch = 1
     C.sample.n_seed = 1
     C.sample.seed_toks = 512
@@ -169,7 +170,7 @@ if __name__ == '__main__':
             
         # Feed partial sequences as a prompts to the model
         generated_sequences = model.sample(start_tokens=seed_sequence, size=config.sample.n_seed,            
-                                 temperature=1.0, max_new_tokens=1024-config.sample.seed_toks, device=None)
+                                 temperature=1.0, max_new_tokens=config.model.block_size-config.sample.seed_toks, device=None)
 
         # Save seeded samples 
         for i in range(config.sample.n_seed):
