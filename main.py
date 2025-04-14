@@ -12,7 +12,7 @@ from miditok.pytorch_data import DatasetMIDI, DataCollator
 
 from src.models.gpt import GPT
 from src.train.train import Trainer
-from src.utils.general_utils import set_seed, setup_logging, CfgNode as CN
+from src.utils.general_utils import set_seed, setup_logging, save_train_log, CfgNode as CN
 from src.utils.data_utils import get_data, split_data
 
 
@@ -45,6 +45,11 @@ def get_config():
     # trainer
     C.gpt_trainer = Trainer.get_default_config()
 
+    # sampling
+    C.sample.n_scratch = 1
+    C.sample.n_seed = 1
+    C.sample.seed_toks = 512
+
     return C
 
 
@@ -72,16 +77,20 @@ if __name__ == '__main__':
     if config.model.rope : config.model.name += '_rope'
 
     # set up tokenizer 
-    if not config.pipeline.train_token:
+    if config.pipeline.train_token:
+        print("Tokenizer training not implemented. Using default tokenizer.")
+        config.pipeline.train_token = False
+
+    elif config.pipeline.train_tokenizer:
         tokenizer_config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True)
         tokenizer = REMI(tokenizer_config)
-    else:
-        pass
 
     # construct the model
     config.model.vocab_size = len(tokenizer)
     
+    print("Run configuration:")
     print(config)
+
     model = GPT(config.model)
     
     if config.model.pretrained != None:
@@ -89,9 +98,8 @@ if __name__ == '__main__':
         pretrained_state_dict = torch.load(config.model.pretrained, weights_only=True)
         model.load_state_dict(pretrained_state_dict, strict=False) 
     
-    #setup_logging(config)
-    out_dir = os.path.join(config.system.work_dir, "out")
-    os.makedirs(out_dir, exist_ok=True)
+    setup_logging(config)
+    out_dir = config.system.work_dir
 
     wandb.init(project="MusicGen", config=config)
 
@@ -100,6 +108,8 @@ if __name__ == '__main__':
     
     if config.pipeline.train_gpt:
 
+        n_examples, train_loss = [], []
+
         # construct trainer object
         trainer = Trainer(config.gpt_trainer, model, dataloader)
 
@@ -107,6 +117,8 @@ if __name__ == '__main__':
         def batch_end_trainer_callback(trainer):
             
             wandb.log({"n_examples" : trainer.n_examples, "train_loss": trainer.loss})
+            n_examples.append(trainer.n_examples)
+            train_loss.append(trainer.loss)
             
             ckpt_path = os.path.join(out_dir, f'{config.model.name}.pt')
 
@@ -122,17 +134,24 @@ if __name__ == '__main__':
         # run the optimization
         trainer.run()
 
+        save_train_log(out_dir, n_examples, train_loss)
+
     # sample
     if config.pipeline.sample:
-        
-        sampled_tokens = model.sample(max_new_tokens=1024, device=None, verbose=True, bos_token_id=1, pad_token_id=0)
-        outmidi = os.path.join(out_dir, "scratch_sample.mid")
-        tokenizer(sampled_tokens[0]).dump_midi(outmidi)
 
+        sampled_tokens = model.sample(size=config.sample.n_scratch, max_new_tokens=config.model.block_size, 
+                                      device=None, verbose=True, bos_token_id=1, pad_token_id=0)
+        
+        for i in range(config.sample.n_scratch):
+            outmidi = os.path.join(out_dir, f"scratch{i+1}.mid")
+            tokenizer(sampled_tokens[i]).dump_midi(outmidi)
+
+        seed_sequences = []
+        train_samples = []
 
         for batch_idx, encodings in enumerate(dataloader):
 
-            if batch_idx > 1:
+            if batch_idx > config.sample.n_seed:
                 break
 
             input_ids = encodings["input_ids"]  # shape (B, T)
@@ -142,27 +161,24 @@ if __name__ == '__main__':
             
             # Get the tokens for that sequence as a list
             seed_sequence = input_ids[random_idx].tolist()
-            
-            # Optionally, pick a random chunk of it if you want partial context
-            # e.g., random chunk of length <= T
-            #random_length = np.random.randint(1, len(seed_sequence) + 1)
-            #seed_sequence = seed_sequence[:random_length]
-            
-            # Now feed this partial sequence as a prompt to the model
-            # We'll generate, say, 128 more tokens
-            generated = model.sample(
-                start_tokens=seed_sequence,
-                size=1,            # we want 1 sequence
-                temperature=1.0,
-                max_len=512,       # or max_new_tokens, depending on your function
-                device=None
-            )
+            seed_sequence = seed_sequence[:config.sample.seed_toks]
 
-            outmidi = os.path.join(out_dir, "train_sample.mid")
-            tokenizer(seed_sequence[0]).dump_midi(outmidi)
+            train_samples.append(input_ids[random_idx])
+            seed_sequences.append(seed_sequence)
+            
+            
+        # Feed partial sequences as a prompts to the model
+        generated_sequences = model.sample(start_tokens=seed_sequence, size=config.sample.n_seed,            
+                                 temperature=1.0, max_new_tokens=1024-config.sample.seed_toks, device=None)
 
-            outmidi = os.path.join(out_dir, "continued_sample.mid")
-            tokenizer(generated[0]).dump_midi(outmidi)
+        # Save seeded samples 
+        for i in range(config.sample.n_seed):
+
+            outmidi = os.path.join(out_dir, f"train_sample{i}.mid")
+            tokenizer(input_ids[random_idx]).dump_midi(outmidi)
+
+            outmidi = os.path.join(out_dir, f"continued_sample{i}.mid")
+            tokenizer(generated_sequences[i][0]).dump_midi(outmidi)
             
             
     # evaluate

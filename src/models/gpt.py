@@ -216,16 +216,13 @@ class GPT(nn.Module):
     
 
     def sample(self, start_tokens=None, size=1, temperature=1.0, max_new_tokens=1024,
-        device=None,
-        verbose=True,
-        bos_token_id=1,
-        pad_token_id=0): 
+               device=None, verbose=True, bos_token_id=1, pad_token_id=0): 
 
         if device is None:
             device = next(self.parameters()).device
 
+        # from scratch generation
         if start_tokens is None:
-            # --- FROM SCRATCH ---
             start_tokens = [[bos_token_id]]
             replicate_start = True
 
@@ -252,8 +249,8 @@ class GPT(nn.Module):
             max_len_prompt = max(len(seq) for seq in start_tokens)
             padded_seqs = []
             for seq in start_tokens:
-                # pad on the right with (for example) bos_token_id or a real PAD if you have one
-                seq = seq + [bos_token_id]*(max_len_prompt - len(seq))
+                # pad on left
+                seq = [pad_token_id]*(max_len_prompt - len(seq)) + seq 
                 padded_seqs.append(seq)
             prompt_ids = torch.tensor(padded_seqs, dtype=torch.long)  # [size, max_len_prompt]
 
