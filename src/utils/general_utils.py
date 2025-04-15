@@ -31,7 +31,7 @@ def setup_logging(config):
 
 def save_train_log(work_dir, n_examples, train_loss):
     with open(os.path.join(work_dir, "train_log.json"), 'w') as f:
-        f.write(json.dump({'n_examples': n_examples, 'train_loss': train_loss}, indent=4))
+        f.write(json.dumps({'n_examples': n_examples, 'train_loss': train_loss}, indent=4))
 
 
 class CfgNode:
