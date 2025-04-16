@@ -76,7 +76,7 @@ if __name__ == '__main__':
         config.model.name = f'{config.model.model_type}_{config.model.model_name}_l{config.model.n_layer}_q{config.model.n_query_head}_kv{config.model.n_kv_head}'
 
     if config.model.rope : config.model.name += '_rope'
-    
+
     # set up tokenizer 
     if config.pipeline.train_token:
         print("Tokenizer training not implemented. Using default tokenizer.")
@@ -119,7 +119,7 @@ if __name__ == '__main__':
             
             wandb.log({"n_examples" : trainer.n_examples, "train_loss": trainer.loss})
             n_examples.append(trainer.n_examples)
-            train_loss.append(trainer.loss)
+            train_loss.append(trainer.loss.item())
             
             ckpt_path = os.path.join(out_dir, f'{config.model.name}.pt')
 
