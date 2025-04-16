@@ -105,7 +105,7 @@ if __name__ == '__main__':
     wandb.init(project="MusicGen", config=config)
 
     dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
-                              subsets=False, return_datasets=False, split=config.pipeline.train_gpt, augment=config.pipeline.train_gpt)
+                              subsets=False, return_datasets=False)
     
     if config.pipeline.train_gpt:
 
@@ -145,14 +145,14 @@ if __name__ == '__main__':
         
         for i in range(config.sample.n_scratch):
             outmidi = os.path.join(out_dir, f"scratch{i+1}.mid")
-            tokenizer(sampled_tokens[i][0]).dump_midi(outmidi)
+            tokenizer(sampled_tokens[i]).dump_midi(outmidi)
 
         seed_sequences = []
         train_samples = []
 
         for batch_idx, encodings in enumerate(dataloader):
 
-            if batch_idx > config.sample.n_seed:
+            if batch_idx >= config.sample.n_seed:
                 break
 
             input_ids = encodings["input_ids"]  # shape (B, T)
@@ -169,17 +169,18 @@ if __name__ == '__main__':
             
             
         # Feed partial sequences as a prompts to the model
-        generated_sequences = model.sample(start_tokens=seed_sequence, size=config.sample.n_seed,            
+        generated_sequences = model.sample(start_tokens=seed_sequences, size=config.sample.n_seed,            
                                  temperature=1.0, max_new_tokens=config.model.block_size-config.sample.seed_toks, device=None)
 
+      
         # Save seeded samples 
         for i in range(config.sample.n_seed):
 
-            outmidi = os.path.join(out_dir, f"train_sample{i}.mid")
+            outmidi = os.path.join(out_dir, f"train_sample{i+1}.mid")
             tokenizer(input_ids[random_idx]).dump_midi(outmidi)
 
-            outmidi = os.path.join(out_dir, f"continued_sample{i}.mid")
-            tokenizer(generated_sequences[i][0]).dump_midi(outmidi)
+            outmidi = os.path.join(out_dir, f"continued_sample{i+1}.mid")
+            tokenizer(generated_sequences[i]).dump_midi(outmidi)
             
             
     # evaluate

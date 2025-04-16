@@ -37,10 +37,10 @@ def get_data(tokenizer, datapath, max_seq_len=1024, batch_size=64, subsets=True,
     midipaths = list(Path(datapath).glob("**/*.mid"))
 
     if not subsets:
-        if split:
-            split_data(tokenizer, midipaths, "all", max_seq_len, split, augment)
+        if not os.path.isdir((Path("..", "Midi_all"))): 
+          split_data(tokenizer, midipaths, "all", max_seq_len, split, augment)
         
-        midis = list(Path("..", "Midi_all").glob("**/*.mid"))
+        midis = list(Path("..", "Midi_all").glob("**/*.mid")) 
         kwargs_dataset = {"max_seq_len": max_seq_len, "tokenizer": tokenizer, "bos_token_id": tokenizer["BOS_None"], "eos_token_id": tokenizer["EOS_None"]}
         dataset= DatasetMIDI(midis, **kwargs_dataset)
         print(f"Dataset size: {len(dataset)} sequences")

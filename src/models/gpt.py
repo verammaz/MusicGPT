@@ -230,19 +230,18 @@ class GPT(nn.Module):
             # single partial sequence, replicate for `size` parallel samples
             start_tokens = [start_tokens]  # make it a list of lists
             replicate_start = True
-        else:
-            # already a list of lists
-            # assume each sub-list is one prompt
+        
+        else: # multiple partial sequences
             replicate_start = False
             if len(start_tokens) != size:
                 size = len(start_tokens)
                 print(f"Overriding `size` to match len(start_tokens) = {size}")
 
         # convert to a single 2D tensor: [size, seq_len_of_prompt]
-        # if replicate_start, repeat same sequence for each item in the batch.
+        # if replicate_start, repeat same sequence for each item in batch.
         if replicate_start:
             prompt_ids = torch.tensor(start_tokens[0], dtype=torch.long).unsqueeze(0)  # [1, prompt_len]
-            prompt_ids = prompt_ids.expand(size, -1)  # [size, prompt_len]
+            prompt_ids = prompt_ids.repeat(size, 1)  # [size, prompt_len]
         else:
             # have multiple distinct partial sequences
             # pad them to the same length if needed
