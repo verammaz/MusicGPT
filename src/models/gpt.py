@@ -37,8 +37,6 @@ class GPT(nn.Module):
         C.n_query_head=4
         C.n_kv_head=4
         C.n_embd=512
-        C.proj_size=512
-        C.d_model=512
         C.block_size=1024
         C.vocab_size=512
         C.rope = False
