@@ -105,7 +105,7 @@ if __name__ == '__main__':
     wandb.init(project="MusicGen", config=config)
 
     dataloader = get_data(tokenizer, config.data, max_seq_len=config.model.block_size, batch_size=config.gpt_trainer.batch_size,
-                              subsets=False, return_datasets=False, split=True, augment=True)
+                              subsets=False, return_datasets=False, split=config.pipeline.train_gpt, augment=config.pipeline.train_gpt)
     
     if config.pipeline.train_gpt:
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         
         for i in range(config.sample.n_scratch):
             outmidi = os.path.join(out_dir, f"scratch{i+1}.mid")
-            tokenizer(sampled_tokens[i]).dump_midi(outmidi)
+            tokenizer(sampled_tokens[i][0]).dump_midi(outmidi)
 
         seed_sequences = []
         train_samples = []
