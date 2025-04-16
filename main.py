@@ -151,9 +151,8 @@ if __name__ == '__main__':
         seed_sequences = []
         train_samples = []
 
-        random.seed() 
-        np.random.seed()
-        
+        set_seed(None)
+
         for batch_idx, encodings in enumerate(dataloader):
 
             if batch_idx >= config.sample.n_seed:
