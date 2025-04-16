@@ -1,6 +1,7 @@
 import wandb
 import os
 import sys
+import random
 import json
 import numpy as np
 from pathlib import Path
@@ -150,6 +151,9 @@ if __name__ == '__main__':
         seed_sequences = []
         train_samples = []
 
+        random.seed() 
+        np.random.seed()
+        
         for batch_idx, encodings in enumerate(dataloader):
 
             if batch_idx >= config.sample.n_seed:
