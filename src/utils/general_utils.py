@@ -11,11 +11,18 @@ import torch
 # -----------------------------------------------------------------------------
 
 
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+def set_seed(seed=None):
+    if seed is not None:
+        random.seed(seed)  # Set seed for Python's random module
+        np.random.seed(seed)  # Set seed for numpy
+        torch.manual_seed(seed)  # Set seed for PyTorch CPU
+        torch.cuda.manual_seed_all(seed)  # Set seed for all CUDA devices (GPUs)
+    else:
+        # If seed is None, reset to system's entropy
+        random.seed()  # Use system time/entropy for randomness
+        np.random.seed()  # Use system time/entropy for numpy
+        torch.manual_seed(int(torch.initial_seed() % (2**32)))  # Rely on PyTorch's internal seed (non-deterministic)
+        torch.cuda.manual_seed_all(int(torch.initial_seed() % (2**32)))  # Rely on CUDA's internal seed (non-deterministic)
 
 def setup_logging(config):
     """ monotonous bookkeeping """
