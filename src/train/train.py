@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 from torch.utils.data.dataloader import DataLoader
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from collections import defaultdict
 from ..utils.general_utils import CfgNode as CN
 
@@ -23,7 +24,12 @@ class Trainer():
         C.betas = (0.9, 0.95)
         C.weight_decay = 0.1 # only applied on matmul weights
         C.grad_norm_clip = 1.0
-
+        # lr scheduler parameters
+        C.use_lr_scheduler = True
+        C.lr_scheduler_patience = 2
+        C.lr_scheduler_factor = 0.5
+        C.lr_scheduler_min_lr = 1e-6
+        
         return C
     
     def __init__(self, config, model, dataloader):
@@ -31,6 +37,20 @@ class Trainer():
         self.dataloader = dataloader
         self.model = model
         self.optimizer = model.configure_optimizers(config)
+        
+        # Initialize the learning rate scheduler if enabled
+        if config.use_lr_scheduler:
+            self.scheduler = ReduceLROnPlateau(
+                self.optimizer, 
+                mode='min', 
+                factor=config.lr_scheduler_factor,
+                patience=config.lr_scheduler_patience, 
+                verbose=True, 
+                min_lr=config.lr_scheduler_min_lr
+            )
+        else:
+            self.scheduler = None
+            
         self.callbacks = defaultdict(list)
 
         # determine the device we'll train on
@@ -89,6 +109,11 @@ class Trainer():
 
             self.n_epoch += 1
             
-              
+            # Step the learning rate scheduler at the end of each epoch
+            if self.scheduler is not None:
+                # Get average loss for this epoch (could also track separately)
+                self.scheduler.step(self.loss.item())
+                current_lr = self.optimizer.param_groups[0]['lr']
+                print(f'Epoch {self.n_epoch} completed. Current learning rate: {current_lr:.2e}')
 
 
