@@ -6,6 +6,7 @@ import json
 import numpy as np
 from pathlib import Path
 import torch
+from collections import defaultdict
 from torch.utils.data import DataLoader
 
 from miditok import REMI, TokenizerConfig
@@ -15,6 +16,7 @@ from src.models.gpt import GPT
 from src.train.train import Trainer
 from src.utils.general_utils import set_seed, setup_logging, save_train_log, CfgNode as CN
 from src.utils.data_utils import get_data, split_data
+from src.evaluate.similarity import SimilarityEvaluator
 
 
 wandb.login()
@@ -141,12 +143,12 @@ if __name__ == '__main__':
     # sample
     if config.pipeline.sample:
 
-        sampled_tokens = model.sample(size=config.sample.n_scratch, max_new_tokens=config.model.block_size, 
+        scratch_samples = model.sample(size=config.sample.n_scratch, max_new_tokens=config.model.block_size, 
                                       device=None, verbose=True, bos_token_id=1, pad_token_id=0)
         
         for i in range(config.sample.n_scratch):
             outmidi = os.path.join(out_dir, f"scratch{i+1}.mid")
-            tokenizer(sampled_tokens[i]).dump_midi(outmidi)
+            tokenizer(scratch_samples[i]).dump_midi(outmidi)
 
         seed_sequences = []
         train_samples = []
@@ -172,7 +174,7 @@ if __name__ == '__main__':
             
             
         # Feed partial sequences as a prompts to the model
-        generated_sequences = model.sample(start_tokens=seed_sequences, size=config.sample.n_seed,            
+        seeded_samples = model.sample(start_tokens=seed_sequences, size=config.sample.n_seed,            
                                  temperature=1.0, max_new_tokens=config.model.block_size-config.sample.seed_toks, device=None)
 
       
@@ -180,15 +182,41 @@ if __name__ == '__main__':
         for i in range(config.sample.n_seed):
 
             outmidi = os.path.join(out_dir, f"train_sample{i+1}.mid")
-            tokenizer(input_ids[random_idx]).dump_midi(outmidi)
+            tokenizer(seed_sequences[i]).dump_midi(outmidi)
 
             outmidi = os.path.join(out_dir, f"continued_sample{i+1}.mid")
-            tokenizer(generated_sequences[i]).dump_midi(outmidi)
+            tokenizer(seeded_samples[i]).dump_midi(outmidi)
             
             
     # evaluate
     if config.pipeline.evaluate:
-        pass
-    
+        out_dir = os.path.join(out_dir, 'eval')
+        train_tokens = []
+        for encodings in dataloader:
+            tokens = encodings["input_ids"]
+            train_tokens.append(tokens)
+        similarity_eval = SimilarityEvaluator(train_tokens)
+        if config.model.sample:
+            scratch_similarity_dict = defaultdict(dict)
+            seeded_similarity_dict = defaultdict(dict)
+            for index, scratch_sample in enumerate(scratch_samples):
+                print(f"Scratch Sample {index+1}:\n")
+                scratch_similarity_dict[f'scratch-{index}']['sample'] = scratch_sample
+                matches = similarity_eval.find_matches(scratch_sample)
+                for match in matches:
+                    idx, bleu, edit = match
+                    outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
+                    tokenizer(train_tokens[idx]).dump_midi(outmidi)
+                    print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
+                scratch_similarity_dict[f'scratch-{index}']['matches'] = matches
+            for seeded_sample in seeded_samples:
+                print(f"Seeded Sample {index+1}:\n")
+                seeded_similarity_dict[f'seeded-{index}']['sample'] = seeded_sample
+                seeded_similarity_dict[f'seeded-{index}']['matches'] = similarity_eval.find_matches(seeded_sample[512:])
+                for match in seeded_similarity_dict[f'seeded-{index}']['matches']:
+                    idx, bleu, edit = match
+                    outmidi = os.path.join(out_dir, f"seeded-{index+1}-match-{idx+1}.mid")
+                    tokenizer(train_tokens[idx]).dump_midi(outmidi)
+                    print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
 
     
