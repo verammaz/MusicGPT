@@ -196,7 +196,7 @@ if __name__ == '__main__':
             tokens = encodings["input_ids"]
             train_tokens.append(tokens)
         similarity_eval = SimilarityEvaluator(train_tokens)
-        if config.model.sample:
+        if config.pipeline.sample:
             scratch_similarity_dict = defaultdict(dict)
             seeded_similarity_dict = defaultdict(dict)
             for index, scratch_sample in enumerate(scratch_samples):
