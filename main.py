@@ -190,33 +190,50 @@ if __name__ == '__main__':
             
     # evaluate
     if config.pipeline.evaluate:
-        out_dir = os.path.join(out_dir, 'eval')
+
+        if not config.pipeline.sample and os.path.isfile(os.path.join(out_dir, f"scratch{1}.mid")):
+            scratch_samples = []
+            for i in range(config.sample.n_scratch):
+                tokens = tokenizer(os.path.join(out_dir, f"scratch{1+i}.mid"))
+                scratch_samples.append(tokens)
+
+        if not config.pipeline.sample and os.path.isfile(os.path.join(out_dir, f"continued_sample{1}.mid")):
+            seeded_samples_samples = []
+            for i in range(config.sample.n_seed):
+                tokens = tokenizer(os.path.join(out_dir, f"continued_sample{1+i}.mid"))
+                seeded_samples.append(tokens)
+
+
         train_tokens = []
         for encodings in dataloader:
             tokens = encodings["input_ids"]
             train_tokens.append(tokens)
+
         similarity_eval = SimilarityEvaluator(train_tokens)
-        if config.model.sample:
-            scratch_similarity_dict = defaultdict(dict)
-            seeded_similarity_dict = defaultdict(dict)
-            for index, scratch_sample in enumerate(scratch_samples):
-                print(f"Scratch Sample {index+1}:\n")
-                scratch_similarity_dict[f'scratch-{index}']['sample'] = scratch_sample
-                matches = similarity_eval.find_matches(scratch_sample)
-                for match in matches:
-                    idx, bleu, edit = match
-                    outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
-                    tokenizer(train_tokens[idx]).dump_midi(outmidi)
-                    print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
-                scratch_similarity_dict[f'scratch-{index}']['matches'] = matches
-            for seeded_sample in seeded_samples:
-                print(f"Seeded Sample {index+1}:\n")
-                seeded_similarity_dict[f'seeded-{index}']['sample'] = seeded_sample
-                seeded_similarity_dict[f'seeded-{index}']['matches'] = similarity_eval.find_matches(seeded_sample[512:])
-                for match in seeded_similarity_dict[f'seeded-{index}']['matches']:
-                    idx, bleu, edit = match
-                    outmidi = os.path.join(out_dir, f"seeded-{index+1}-match-{idx+1}.mid")
-                    tokenizer(train_tokens[idx]).dump_midi(outmidi)
-                    print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
+        
+        scratch_similarity_dict = defaultdict(dict)
+        seeded_similarity_dict = defaultdict(dict)
+
+        out_dir = os.path.join(out_dir, "eval")
+
+        for index, scratch_sample in enumerate(scratch_samples):
+            print(f"Scratch Sample {index+1}:\n")
+            scratch_similarity_dict[f'scratch-{index}']['sample'] = scratch_sample
+            matches = similarity_eval.find_matches(scratch_sample)
+            for match in matches:
+                idx, bleu, edit = match
+                outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
+                tokenizer(train_tokens[idx]).dump_midi(outmidi)
+                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
+            scratch_similarity_dict[f'scratch-{index}']['matches'] = matches
+        for seeded_sample in seeded_samples:
+            print(f"Seeded Sample {index+1}:\n")
+            seeded_similarity_dict[f'seeded-{index}']['sample'] = seeded_sample
+            seeded_similarity_dict[f'seeded-{index}']['matches'] = similarity_eval.find_matches(seeded_sample[512:])
+            for match in seeded_similarity_dict[f'seeded-{index}']['matches']:
+                idx, bleu, edit = match
+                outmidi = os.path.join(out_dir, f"seeded-{index+1}-match-{idx+1}.mid")
+                tokenizer(train_tokens[idx]).dump_midi(outmidi)
+                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
 
     
