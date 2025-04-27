@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 from collections import defaultdict
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from miditok import REMI, TokenizerConfig
 from miditok.pytorch_data import DatasetMIDI, DataCollator
@@ -198,42 +199,45 @@ if __name__ == '__main__':
                 scratch_samples.append(tokens)
 
         if not config.pipeline.sample and os.path.isfile(os.path.join(out_dir, f"continued_sample{1}.mid")):
-            seeded_samples_samples = []
+            seeded_samples = []
             for i in range(config.sample.n_seed):
                 tokens = tokenizer(os.path.join(out_dir, f"continued_sample{1+i}.mid"))
                 seeded_samples.append(tokens)
 
+        print(f"Number of scratch samples: {len(scratch_samples)}")
+        print(f"Number of conditioned samples: {len(seeded_samples)}")
 
-        train_tokens = []
-        for encodings in dataloader:
-            tokens = encodings["input_ids"]
-            train_tokens.append(tokens)
+        
+        t_batches = [ b["input_ids"] for b in tqdm(dataloader, desc="Gathering tokens") ]
+        train_tokens_tensor = torch.cat(t_batches, dim=0)
+        train_tokens = train_tokens_tensor.tolist() 
 
+        print("Length of training tokens: ", len(train_tokens))
+        print("Size of training token: ", len(train_tokens[0]))
         similarity_eval = SimilarityEvaluator(train_tokens)
         
-        scratch_similarity_dict = defaultdict(dict)
-        seeded_similarity_dict = defaultdict(dict)
 
         out_dir = os.path.join(out_dir, "eval")
-
-        for index, scratch_sample in enumerate(scratch_samples):
-            print(f"Scratch Sample {index+1}:\n")
-            scratch_similarity_dict[f'scratch-{index}']['sample'] = scratch_sample
-            matches = similarity_eval.find_matches(scratch_sample)
-            for match in matches:
-                idx, bleu, edit = match
-                outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
-                tokenizer(train_tokens[idx]).dump_midi(outmidi)
-                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
-            scratch_similarity_dict[f'scratch-{index}']['matches'] = matches
-        for seeded_sample in seeded_samples:
-            print(f"Seeded Sample {index+1}:\n")
-            seeded_similarity_dict[f'seeded-{index}']['sample'] = seeded_sample
-            seeded_similarity_dict[f'seeded-{index}']['matches'] = similarity_eval.find_matches(seeded_sample[512:])
-            for match in seeded_similarity_dict[f'seeded-{index}']['matches']:
-                idx, bleu, edit = match
+        os.makedirs(out_dir, exist_ok=True)
+        for index, seeded_sample in enumerate(seeded_samples):
+            print(f"Seeded Sample {index+1}:")
+            matches = similarity_eval.find_matches(seeded_sample)
+            print("Number of matches: ", len(matches))
+            for m in matches:
+                print(f"M: {m}")
+                idx, bleu, edit = m
                 outmidi = os.path.join(out_dir, f"seeded-{index+1}-match-{idx+1}.mid")
                 tokenizer(train_tokens[idx]).dump_midi(outmidi)
                 print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
 
+        for index, scratch_sample in enumerate(scratch_samples):
+            print(f"Scratch Sample {index+1}:")
+            matches = similarity_eval.find_matches(scratch_sample[512:]) #Only unseeded
+            print("Number of matches: ", len(matches))
+            for m in matches:
+                idx, bleu, edit = m
+                outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
+                tokenizer(train_tokens[idx]).dump_midi(outmidi)
+                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
+        
     
