@@ -205,39 +205,37 @@ if __name__ == '__main__':
                 seeded_samples.append(tokens)
 
         print(f"Number of scratch samples: {len(scratch_samples)}")
-        print(f"Number of conditioned samples: {len(seeded_samples)}")
+        print(f"Number of seeded samples: {len(seeded_samples)}")
 
         
-        t_batches = [ b["input_ids"] for b in tqdm(dataloader, desc="Gathering tokens") ]
+        t_batches = [ b["input_ids"] for b in tqdm(dataloader, desc="Gathering training sequences...") ]
         train_tokens_tensor = torch.cat(t_batches, dim=0)
         train_tokens = train_tokens_tensor.tolist() 
 
-        print("Length of training tokens: ", len(train_tokens))
-        print("Size of training token: ", len(train_tokens[0]))
         similarity_eval = SimilarityEvaluator(train_tokens)
         
-
         out_dir = os.path.join(out_dir, "eval")
         os.makedirs(out_dir, exist_ok=True)
+
         for index, seeded_sample in enumerate(seeded_samples):
             print(f"Seeded Sample {index+1}:")
             matches = similarity_eval.find_matches(seeded_sample)
-            print("Number of matches: ", len(matches))
+            print("\tNumber of matches: ", len(matches))
             for m in matches:
                 print(f"M: {m}")
                 idx, bleu, edit = m
                 outmidi = os.path.join(out_dir, f"seeded-{index+1}-match-{idx+1}.mid")
                 tokenizer(train_tokens[idx]).dump_midi(outmidi)
-                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
+                print(f"\t\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")            
 
         for index, scratch_sample in enumerate(scratch_samples):
             print(f"Scratch Sample {index+1}:")
             matches = similarity_eval.find_matches(scratch_sample[512:]) #Only unseeded
-            print("Number of matches: ", len(matches))
+            print("\tNumber of matches: ", len(matches))
             for m in matches:
                 idx, bleu, edit = m
                 outmidi = os.path.join(out_dir, f"scratch-{index+1}-match-{idx+1}.mid")
                 tokenizer(train_tokens[idx]).dump_midi(outmidi)
-                print(f"\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
+                print(f"\t\tMatched Sample {idx+1}: BLEU={bleu:.2f},  edit={edit:.3f}")
         
     
