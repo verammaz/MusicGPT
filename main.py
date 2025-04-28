@@ -55,6 +55,12 @@ def get_config():
     C.sample.n_seed = 1
     C.sample.seed_toks = 512
 
+    # similarity evaluation
+    C.eval = CN()
+    C.eval.bleu_thr = 0.80
+    C.eval.edit_thr = 0.05
+    C.eval.max_matches = 10
+
     return C
 
 
@@ -212,14 +218,14 @@ if __name__ == '__main__':
         train_tokens_tensor = torch.cat(t_batches, dim=0)
         train_tokens = train_tokens_tensor.tolist() 
 
-        similarity_eval = SimilarityEvaluator(train_tokens)
+        similarity_eval = SimilarityEvaluator(train_tokens, config.eval.bleu_thr, config.eval.edit_thr)
         
         out_dir = os.path.join(out_dir, "eval")
         os.makedirs(out_dir, exist_ok=True)
 
         for index, seeded_sample in enumerate(seeded_samples):
             print(f"Seeded Sample {index+1}:")
-            matches = similarity_eval.find_matches(seeded_sample)
+            matches = similarity_eval.find_matches(seeded_sample, max_matches=config.eval.max_matches)
             print("\tNumber of matches: ", len(matches))
             for m in matches:
                 print(f"M: {m}")
@@ -230,7 +236,7 @@ if __name__ == '__main__':
 
         for index, scratch_sample in enumerate(scratch_samples):
             print(f"Scratch Sample {index+1}:")
-            matches = similarity_eval.find_matches(scratch_sample[512:]) #Only unseeded
+            matches = similarity_eval.find_matches(scratch_sample[512:], max_matches=config.eval.max_matches) # only new piece 
             print("\tNumber of matches: ", len(matches))
             for m in matches:
                 idx, bleu, edit = m
