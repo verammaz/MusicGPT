@@ -42,7 +42,8 @@ def save_train_log(work_dir, n_examples, train_loss):
 
 
 class CfgNode:
-    """ a lightweight configuration class inspired by yacs """
+    """ a lightweight configuration class inspired by yacs 
+    (https://github.com/rbgirshick/yacs)"""
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
