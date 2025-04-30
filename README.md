@@ -14,6 +14,32 @@ A lightweight **PyTorch** implementation of a GPT‑style Transformer trained to
 
 ---
 
+## 🎹 Example Dataset (Optional)
+
+No MIDI files on hand? Grab one of the public Maestro‑style datasets from Kaggle with
+[`kagglehub`](https://github.com/Kaggle/kagglehub):
+
+```python
+import kagglehub
+
+# Download latest MAESTRO piano MIDI dataset (≈ 200 MB)
+path = kagglehub.dataset_download("kritanjalijain/maestropianomidi")
+
+# Alternative (smaller) classical collection
+# path = kagglehub.dataset_download("soumikrakshit/classical-music-midi")
+
+print("Files downloaded to", path)
+```
+This will create a local directory like `~/.cache/kagglehub/datasets/...`. Use that directory
+as the `DATA_DIR` below.
+---
+
+## ⚠️ Disclaimer
+
+MusicGPT’s current architecture is tuned for **solo piano and classical music**. Generation quality may drop for other genres or multi‑instrument arrangements. Extending support to diverse styles and instrumentations is active work—stay tuned!
+
+---
+
 ## 🚀 Quick Start
 
 > **Prerequisites**: Python ≥ 3.9, CUDA‑capable GPU (optional but recommended).
@@ -54,7 +80,7 @@ All settings come from `get_config()` in `main.py` and can be overridden via *do
 | `pipeline`   | `--pipeline.sample=False`                  | `True`  | Enable / disable stage                  |
 | `model`      | `--model.n_layer=8`                       | 4      | Transformer depth                       |
 |              | `--model.pretrained=/path/ckpt.pt`         | `None`  | Resume / fine‑tune                      |
-| `gpt_trainer`| `--gpt_trainer.batch_size=32`              | 16      | Optimizer & schedule                    |
+| `gpt_trainer`| `--gpt_trainer.batch_size=32`              | 32      | Optimizer & schedule                    |
 | `sample`     | `--sample.n_scratch=8`                     | 1       | Number of scratch pieces                |
 |              | `--sample.seed_toks=256`                   | 512     | Prompt length for continuations         |
 | `eval`       | `--eval.bleu_thr=0.75 --eval.edit_thr=0.06`| 0.80/0.05| Similarity thresholds                  |
@@ -85,14 +111,12 @@ python main.py --data=$DATA_DIR \
 # Scratch generation (no prompt)
 python main.py --data=$DATA_DIR \
                --pipeline.train_gpt=False \
-               --pipeline.evaluate=False \
                --model.pretrained=/path/to/model.pt \ 
                --sample.n_scratch=4
 
 # Continuation (prompted)
 python main.py --data=$DATA_DIR \
                --pipeline.train_gpt=False \
-               --pipeline.evaluate=False \
                --model.pretrained=/path/to/model.pt \ 
                --sample.n_seed=3 --sample.seed_toks=256
 ```
@@ -101,6 +125,8 @@ Resulting `.mid` files are written to `<work_dir>`.
 ---
 
 ## 🧪 Evaluation Logic
+
+Generated pieces are dumped to `<work_dir>` for ear test.
 
 A generated piece is flagged as *too similar* if:
 
